@@ -26,14 +26,64 @@ public final class ToonShadingManager {
     public static func registerComponents() {
         ToonShadedComponent.registerComponent()
         ToonOutlineComponent.registerComponent()
+        ToonIgnoreComponent.registerComponent()
+    }
+
+    /// True when an entity (or a generated hull) must be skipped during traversal.
+    private func skip(_ entity: Entity) -> Bool {
+        entity.components[ToonOutlineComponent.self] != nil ||
+        entity.components[ToonIgnoreComponent.self] != nil
     }
 
     // MARK: Public entry points
+
+    /// Flag every mesh-bearing entity in a hierarchy (skipping generated outline
+    /// hulls) with a `ToonShadedComponent`, then style the whole scene. This is
+    /// the one-call entry point for "toon shade everything under this root".
+    public func applyToScene(_ root: Entity,
+                             baseColor: SIMD3<Float> = [0.78, 0.78, 0.80],
+                             mode: ToonMode = .full,
+                             outlineColor: SIMD3<Float> = [0, 0, 0],
+                             outlineScale: Float = 1.045,
+                             bands: Float = 3) async {
+        tagModels(root,
+                  baseColor: baseColor,
+                  mode: mode,
+                  outlineColor: outlineColor,
+                  outlineScale: outlineScale,
+                  bands: bands)
+        await walk(root)
+    }
 
     /// Apply toon styling to every entity in a hierarchy that carries a
     /// `ToonShadedComponent`. Call once after a scene is built.
     public func applyToHierarchy(_ root: Entity) async {
         await walk(root)
+    }
+
+    private func tagModels(_ entity: Entity,
+                           baseColor: SIMD3<Float>,
+                           mode: ToonMode,
+                           outlineColor: SIMD3<Float>,
+                           outlineScale: Float,
+                           bands: Float) {
+        if skip(entity) { return }
+        if entity.components[ModelComponent.self] != nil,
+           entity.components[ToonShadedComponent.self] == nil {
+            entity.components.set(ToonShadedComponent(baseColor: baseColor,
+                                                      mode: mode,
+                                                      outlineColor: outlineColor,
+                                                      outlineScale: outlineScale,
+                                                      bands: bands))
+        }
+        for child in entity.children {
+            tagModels(child,
+                      baseColor: baseColor,
+                      mode: mode,
+                      outlineColor: outlineColor,
+                      outlineScale: outlineScale,
+                      bands: bands)
+        }
     }
 
     /// Apply toon styling to a single entity with explicit settings, adding the
@@ -71,13 +121,13 @@ public final class ToonShadingManager {
     // MARK: Internals
 
     private func walk(_ entity: Entity) async {
-        if var c = entity.components[ToonShadedComponent.self], !c.applied,
-           entity.components[ToonOutlineComponent.self] == nil {
+        if skip(entity) { return }
+        if var c = entity.components[ToonShadedComponent.self], !c.applied {
             await apply(to: entity, settings: c)
             c.applied = true
             entity.components.set(c)
         }
-        for child in entity.children where child.components[ToonOutlineComponent.self] == nil {
+        for child in entity.children {
             await walk(child)
         }
     }
@@ -87,8 +137,8 @@ public final class ToonShadingManager {
     }
 
     private func styleModels(of entity: Entity, settings: ToonShadedComponent) async {
-        if entity.components[ToonOutlineComponent.self] == nil,
-           var model = entity.components[ModelComponent.self] {
+        if skip(entity) { return }
+        if var model = entity.components[ModelComponent.self] {
 
             if settings.mode == .full, let cel = await celMaterial(bands: settings.bands,
                                                                     color: settings.baseColor) {
@@ -99,7 +149,7 @@ public final class ToonShadingManager {
             addOutline(to: entity, mesh: model.mesh, settings: settings)
         }
 
-        for child in entity.children where child.components[ToonOutlineComponent.self] == nil {
+        for child in entity.children {
             await styleModels(of: child, settings: settings)
         }
     }

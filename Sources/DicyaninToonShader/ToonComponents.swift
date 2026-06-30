@@ -52,3 +52,9 @@ public struct ToonShadedComponent: Component {
 public struct ToonOutlineComponent: Component {
     public init() {}
 }
+
+/// Excludes an entity and its entire subtree from toon styling. Put this on
+/// skyboxes, lights, UI, or anything that should keep its original material.
+public struct ToonIgnoreComponent: Component {
+    public init() {}
+}
