@@ -41,6 +41,18 @@ await ToonShadingManager.shared.style(entity, baseColor: [0.8, 0.2, 0.2], mode: 
 
 `mode: .outlineOnly` keeps the existing material and adds only the outline. Remove styling with `ToonShadingManager.shared.remove(from: root)`.
 
+## Style modes
+
+- `.full` — cel-shaded bands + inverted-hull outline (the classic toon look).
+- `.outlineOnly` — keeps the existing material, adds only the outline.
+- `.wireframe` — unlit triangle-edge rendering tinted with `baseColor`; no outline hull.
+- `.envirobear` — Enviro-Bear 2000 chaos: each entity gets a deterministic garish MS-Paint colour from a clashing palette (bear brown, pure red, hazard yellow, impossible magenta…), harsh 2-band shading with near-black shadows, noise-driven scribble splotches, and a thick wobbly dark-brown outline. `baseColor` is ignored.
+
+```swift
+await ToonShadingManager.shared.applyToScene(root, mode: .envirobear) // full MS-Paint bear
+await ToonShadingManager.shared.style(entity, baseColor: [0, 1, 0.4], mode: .wireframe)
+```
+
 ## Tuning
 
 `ToonShadedComponent` exposes `baseColor`, `outlineColor`, `outlineScale`, `bands`, and `mode`. `ToonMaterialFactory.celMaterial(bands:keyLight:shadowMix:)` builds the graph directly if you want full control.

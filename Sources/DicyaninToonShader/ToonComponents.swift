@@ -17,6 +17,13 @@ public enum ToonMode: Equatable, Sendable {
     case full
     /// Keep the existing material, add the outline only.
     case outlineOnly
+    /// Unlit wireframe rendering (triangle edges only), no outline hull.
+    case wireframe
+    /// Enviro-Bear 2000 style: garish MS-Paint flat colours picked from a
+    /// clashing palette, harsh 2-band shading, noisy scribble splotches, and a
+    /// thick wobbly dark-brown outline. `baseColor` is ignored — the palette
+    /// colour is chosen deterministically per entity.
+    case envirobear
 }
 
 /// Flags an entity (and its descendants) for toon styling.

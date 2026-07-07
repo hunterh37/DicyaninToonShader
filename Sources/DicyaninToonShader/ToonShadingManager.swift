@@ -22,6 +22,10 @@ public final class ToonShadingManager {
     /// shader parameter, so one compiled graph per band count serves every tint.
     private var celCache: [Int: ShaderGraphMaterial] = [:]
 
+    /// Cached Enviro-Bear material; colour is a shader parameter so one graph
+    /// serves the whole palette.
+    private var envirobearCache: ShaderGraphMaterial?
+
     /// Register the toon components. Call once at app launch.
     public static func registerComponents() {
         ToonShadedComponent.registerComponent()
@@ -140,13 +144,40 @@ public final class ToonShadingManager {
         if skip(entity) { return }
         if var model = entity.components[ModelComponent.self] {
 
-            if settings.mode == .full, let cel = await celMaterial(bands: settings.bands,
-                                                                    color: settings.baseColor) {
-                model.materials = Array(repeating: cel, count: max(model.materials.count, 1))
-                entity.components.set(model)
-            }
+            switch settings.mode {
+            case .full:
+                if let cel = await celMaterial(bands: settings.bands,
+                                               color: settings.baseColor) {
+                    model.materials = Array(repeating: cel, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                addOutline(to: entity, mesh: model.mesh, settings: settings)
 
-            addOutline(to: entity, mesh: model.mesh, settings: settings)
+            case .outlineOnly:
+                addOutline(to: entity, mesh: model.mesh, settings: settings)
+
+            case .wireframe:
+                var wire = UnlitMaterial(color: platformColor(settings.baseColor))
+                wire.triangleFillMode = .lines
+                model.materials = Array(repeating: wire, count: max(model.materials.count, 1))
+                entity.components.set(model)
+                // No outline hull — it would just add more wire clutter.
+                for child in entity.children where child.components[ToonOutlineComponent.self] != nil {
+                    child.removeFromParent()
+                }
+
+            case .envirobear:
+                if let mat = await envirobearMaterial(color: Self.envirobearColor(for: entity)) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Thick wobbly dark-brown MS-Paint outline, overriding the
+                // component's outline settings for maximum crayon energy.
+                var s = settings
+                s.outlineColor = [0.16, 0.08, 0.03]
+                s.outlineScale = max(settings.outlineScale, 1.08)
+                addOutline(to: entity, mesh: model.mesh, settings: s, wobble: true)
+            }
         }
 
         for child in entity.children {
@@ -154,7 +185,8 @@ public final class ToonShadingManager {
         }
     }
 
-    private func addOutline(to entity: Entity, mesh: MeshResource, settings: ToonShadedComponent) {
+    private func addOutline(to entity: Entity, mesh: MeshResource,
+                            settings: ToonShadedComponent, wobble: Bool = false) {
         guard settings.outlineScale > 1.0 else { return }
         for child in entity.children where child.components[ToonOutlineComponent.self] != nil {
             child.removeFromParent()
@@ -164,9 +196,61 @@ public final class ToonShadingManager {
         hullMat.faceCulling = .front
 
         let hull = ModelEntity(mesh: mesh, materials: [hullMat])
-        hull.scale = SIMD3<Float>(repeating: settings.outlineScale)
+        if wobble {
+            // Non-uniform scale so the hull reads like a hand-drawn line whose
+            // thickness drifts around the silhouette, seeded per entity.
+            let h = Self.hash(entity)
+            let extra = settings.outlineScale - 1.0
+            func axis(_ salt: UInt64) -> Float {
+                1.0 + extra * (0.7 + 0.6 * Float((h ^ salt) % 1000) / 1000.0)
+            }
+            hull.scale = [axis(0x9E37), axis(0x79B9), axis(0xC2B2)]
+        } else {
+            hull.scale = SIMD3<Float>(repeating: settings.outlineScale)
+        }
         hull.components.set(ToonOutlineComponent())
         entity.addChild(hull)
+    }
+
+    // MARK: Enviro-Bear helpers
+
+    /// Clashing MS-Paint bucket-fill palette.
+    private static let envirobearPalette: [SIMD3<Float>] = [
+        [0.58, 0.32, 0.10], // bear brown
+        [1.00, 0.00, 0.00], // pure red
+        [0.10, 0.85, 0.10], // pine green
+        [1.00, 0.90, 0.00], // hazard yellow
+        [1.00, 0.45, 0.00], // traffic-cone orange
+        [0.95, 0.20, 0.85], // impossible magenta
+        [0.10, 0.55, 1.00], // paint-bucket blue
+        [0.45, 0.90, 0.95], // ice cyan
+    ]
+
+    private static func hash(_ entity: Entity) -> UInt64 {
+        var h = UInt64(entity.id) &* 0x9E3779B97F4A7C15
+        h ^= h >> 29; h &*= 0xBF58476D1CE4E5B9
+        h ^= h >> 32
+        return h
+    }
+
+    /// Deterministic garish palette pick per entity.
+    static func envirobearColor(for entity: Entity) -> SIMD3<Float> {
+        envirobearPalette[Int(hash(entity) % UInt64(envirobearPalette.count))]
+    }
+
+    private func envirobearMaterial(color: SIMD3<Float>) async -> ShaderGraphMaterial? {
+        if var cached = envirobearCache {
+            try? cached.setParameter(name: "BaseColor", value: .color(cgColor(color)))
+            return cached
+        }
+        do {
+            var mat = try await ToonMaterialFactory.envirobearMaterial()
+            envirobearCache = mat
+            try? mat.setParameter(name: "BaseColor", value: .color(cgColor(color)))
+            return mat
+        } catch {
+            return nil
+        }
     }
 
     private func celMaterial(bands: Float, color: SIMD3<Float>) async -> ShaderGraphMaterial? {
