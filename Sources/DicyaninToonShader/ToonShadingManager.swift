@@ -26,6 +26,12 @@ public final class ToonShadingManager {
     /// serves the whole palette.
     private var envirobearCache: ShaderGraphMaterial?
 
+    /// Cached decade-style materials, one compiled graph per style. Pop art
+    /// re-tints via a `BaseColor` parameter and synthwave via a `RimColor`
+    /// parameter; the rest are fixed looks.
+    private enum DecadeStyle: Hashable { case popArt, psychedelic, synthwave, gameboy, y2kChrome }
+    private var decadeCache: [DecadeStyle: ShaderGraphMaterial] = [:]
+
     /// Register the toon components. Call once at app launch.
     public static func registerComponents() {
         ToonShadedComponent.registerComponent()
@@ -177,6 +183,64 @@ public final class ToonShadingManager {
                 s.outlineColor = [0.16, 0.08, 0.03]
                 s.outlineScale = max(settings.outlineScale, 1.08)
                 addOutline(to: entity, mesh: model.mesh, settings: s, wobble: true)
+
+            case .popArt:
+                if let mat = await popArtMaterial(color: settings.baseColor) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Thick black comic ink line.
+                var s = settings
+                s.outlineColor = [0, 0, 0]
+                s.outlineScale = max(settings.outlineScale, 1.07)
+                addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .psychedelic:
+                if let mat = await cachedMaterial(.psychedelic,
+                                                  build: { try await ToonMaterialFactory.psychedelicMaterial() }) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // White poster outline so the rainbow pops.
+                var s = settings
+                s.outlineColor = [1, 1, 1]
+                s.outlineScale = max(settings.outlineScale, 1.05)
+                addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .synthwave:
+                let neon = Self.synthwaveColor(for: entity)
+                if let mat = await synthwaveMaterial(rim: neon) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Outline glows in the same neon as the rim.
+                var s = settings
+                s.outlineColor = neon
+                s.outlineScale = max(settings.outlineScale, 1.05)
+                addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .gameboy:
+                if let mat = await cachedMaterial(.gameboy,
+                                                  build: { try await ToonMaterialFactory.gameboyMaterial() }) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Darkest DMG green stands in for black, like LCD sprite edges.
+                var s = settings
+                s.outlineColor = [0.06, 0.22, 0.06]
+                s.outlineScale = max(settings.outlineScale, 1.045)
+                addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .y2kChrome:
+                if let mat = await cachedMaterial(.y2kChrome,
+                                                  build: { try await ToonMaterialFactory.y2kChromeMaterial() }) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Thin near-black line keeps the chrome crisp.
+                var s = settings
+                s.outlineColor = [0.04, 0.04, 0.08]
+                addOutline(to: entity, mesh: model.mesh, settings: s)
             }
         }
 
@@ -267,6 +331,47 @@ public final class ToonShadingManager {
         } catch {
             return nil
         }
+    }
+
+    // MARK: Decade-style helpers
+
+    /// 1980s neon rim palette for `.synthwave`.
+    private static let synthwavePalette: [SIMD3<Float>] = [
+        [1.00, 0.12, 0.75], // hot magenta
+        [0.10, 0.95, 1.00], // electric cyan
+        [0.65, 0.30, 1.00], // laser purple
+        [1.00, 0.55, 0.10], // sunset orange
+        [0.30, 1.00, 0.60], // mint laser
+    ]
+
+    /// Deterministic neon pick per entity.
+    static func synthwaveColor(for entity: Entity) -> SIMD3<Float> {
+        synthwavePalette[Int(hash(entity) % UInt64(synthwavePalette.count))]
+    }
+
+    /// Build-once cache for decade materials.
+    private func cachedMaterial(_ style: DecadeStyle,
+                                build: () async throws -> ShaderGraphMaterial) async -> ShaderGraphMaterial? {
+        if let cached = decadeCache[style] { return cached }
+        guard let mat = try? await build() else { return nil }
+        decadeCache[style] = mat
+        return mat
+    }
+
+    private func popArtMaterial(color: SIMD3<Float>) async -> ShaderGraphMaterial? {
+        guard var mat = await cachedMaterial(.popArt,
+                                             build: { try await ToonMaterialFactory.popArtMaterial() })
+        else { return nil }
+        try? mat.setParameter(name: "BaseColor", value: .color(cgColor(color)))
+        return mat
+    }
+
+    private func synthwaveMaterial(rim: SIMD3<Float>) async -> ShaderGraphMaterial? {
+        guard var mat = await cachedMaterial(.synthwave,
+                                             build: { try await ToonMaterialFactory.synthwaveMaterial() })
+        else { return nil }
+        try? mat.setParameter(name: "RimColor", value: .color(cgColor(rim)))
+        return mat
     }
 
     // MARK: Colour helpers

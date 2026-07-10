@@ -24,6 +24,22 @@ public enum ToonMode: Equatable, Sendable {
     /// thick wobbly dark-brown outline. `baseColor` is ignored — the palette
     /// colour is chosen deterministically per entity.
     case envirobear
+    /// 1950s–60s pop-art comic: hard 2-band cel with Ben-Day halftone dots
+    /// filling the shadow side, plus a thick black ink outline. Uses `baseColor`.
+    case popArt
+    /// 1960s psychedelic poster: animated rainbow hue bands flowing across the
+    /// surface, quantized hard so it stays graphic. `baseColor` is ignored.
+    case psychedelic
+    /// 1980s synthwave: near-black indigo body, quantized neon fresnel rim
+    /// (colour picked per entity from a neon palette), animated scanlines, and
+    /// a matching neon outline. `baseColor` is ignored.
+    case synthwave
+    /// 1990s Game Boy DMG-01: the authentic 4-shade green LCD palette with a
+    /// darkest-green outline. `baseColor` is ignored — that's the point.
+    case gameboy
+    /// 2000s Y2K liquid chrome: banded iridescent fresnel with a slowly
+    /// drifting hue and hot specular pings. `baseColor` is ignored.
+    case y2kChrome
 }
 
 /// Flags an entity (and its descendants) for toon styling.
