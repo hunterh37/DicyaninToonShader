@@ -65,6 +65,9 @@ struct ContentView: View {
             content.add(holder)
         }
         .task(id: rebuildKey) { await rebuild() }
+        .ornament(attachmentAnchor: .scene(.leading)) {
+            styleList
+        }
         .ornament(attachmentAnchor: .scene(.bottom)) {
             controls
         }
@@ -89,14 +92,45 @@ struct ContentView: View {
         await ToonShadingManager.shared.applyToHierarchy(scene)
     }
 
+    /// Always-expanded list of every style, standing in its own ornament so it
+    /// never has to open a floating popover over the 3D content — a menu
+    /// `Picker` popping up above the volumetric scene is what caused the
+    /// z-fighting/occlusion glitches we saw before.
+    private var styleList: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(DemoStyle.allCases) { candidate in
+                    Button {
+                        style = candidate
+                    } label: {
+                        HStack {
+                            Text(candidate.rawValue)
+                            Spacer()
+                            if candidate == style {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        candidate == style
+                            ? Color.accentColor.opacity(0.25)
+                            : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 8)
+                    )
+                }
+            }
+            .padding(12)
+        }
+        .frame(width: 260, height: 420)
+        .glassBackgroundEffect()
+    }
+
     private var controls: some View {
         VStack(spacing: 12) {
-            Picker("Style", selection: $style) {
-                ForEach(DemoStyle.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.menu)
-            .frame(width: 320)
-
             HStack(spacing: 24) {
                 VStack(alignment: .leading) {
                     Text("Outline \(outlineScale, specifier: "%.3f")").font(.caption)
@@ -125,4 +159,8 @@ struct ContentView: View {
         guard let table = holder.findEntity(named: "Turntable") else { return }
         table.components.set(TurntableComponent(speed: on ? 0.3 : 0))
     }
+}
+
+#Preview(windowStyle: .volumetric) {
+    ContentView()
 }

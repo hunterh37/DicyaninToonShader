@@ -4,6 +4,16 @@ Cel / toon shading with a black inverted-hull outline for RealityKit on Apple Vi
 
 Platforms: visionOS 2+ (iOS 18+ builds for tooling and previews).
 
+[▶ Demo video](Media/demo.mov)
+
+<table>
+<tr>
+<td><img src="Media/style-psychedelic.png" width="260"/></td>
+<td><img src="Media/style-gameboy.png" width="260"/></td>
+<td><img src="Media/style-modes-menu.png" width="260"/></td>
+</tr>
+</table>
+
 ## Install
 
 Swift Package Manager:
