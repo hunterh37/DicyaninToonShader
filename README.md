@@ -85,3 +85,7 @@ await ToonShadingManager.shared.style(entity, baseColor: [0, 1, 0.4], mode: .wir
 ## Tuning
 
 `ToonShadedComponent` exposes `baseColor`, `outlineColor`, `outlineScale`, `bands`, and `mode`. `ToonMaterialFactory.celMaterial(bands:keyLight:shadowMix:)` builds the graph directly if you want full control.
+
+## More from Dicyanin Labs
+
+This is one of several open-source Swift packages we maintain. Browse them all at [github.com/hunterh37/DicyaninPackages](https://github.com/hunterh37/DicyaninPackages), and check out [dicyaninlabs.com](https://dicyaninlabs.com) for more visionOS games and experiences.
