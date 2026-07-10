@@ -29,7 +29,11 @@ public final class ToonShadingManager {
     /// Cached decade-style materials, one compiled graph per style. Pop art
     /// re-tints via a `BaseColor` parameter and synthwave via a `RimColor`
     /// parameter; the rest are fixed looks.
-    private enum DecadeStyle: Hashable { case popArt, psychedelic, synthwave, gameboy, y2kChrome }
+    private enum DecadeStyle: Hashable {
+        case popArt, psychedelic, synthwave, gameboy, y2kChrome
+        case rubberHose, blacklight, thermal, vhs, hologram
+        case filmNoir, sketch, arcade, matrixRain, blueprint
+    }
     private var decadeCache: [DecadeStyle: ShaderGraphMaterial] = [:]
 
     /// Register the toon components. Call once at app launch.
@@ -241,6 +245,118 @@ public final class ToonShadingManager {
                 var s = settings
                 s.outlineColor = [0.04, 0.04, 0.08]
                 addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .rubberHose:
+                if let mat = await cachedMaterial(.rubberHose,
+                                                  build: { try await ToonMaterialFactory.rubberHoseMaterial() }) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Thick wobbly ink line — hand-inked animation cel.
+                var s = settings
+                s.outlineColor = [0.02, 0.02, 0.02]
+                s.outlineScale = max(settings.outlineScale, 1.07)
+                addOutline(to: entity, mesh: model.mesh, settings: s, wobble: true)
+
+            case .blacklight:
+                let glow = Self.blacklightColor(for: entity)
+                if let mat = await blacklightMaterial(glow: glow) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Outline glows in the same dayglo paint.
+                var s = settings
+                s.outlineColor = glow
+                s.outlineScale = max(settings.outlineScale, 1.05)
+                addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .thermal:
+                if let mat = await cachedMaterial(.thermal,
+                                                  build: { try await ToonMaterialFactory.thermalMaterial() }) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // No outline — FLIR imagery has no ink lines. Clear any stale hull.
+                for child in entity.children where child.components[ToonOutlineComponent.self] != nil {
+                    child.removeFromParent()
+                }
+
+            case .vhs:
+                if let mat = await vhsMaterial(color: settings.baseColor) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Soft charcoal line, like a worn dub losing its edges.
+                var s = settings
+                s.outlineColor = [0.10, 0.10, 0.12]
+                addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .hologram:
+                if let mat = await cachedMaterial(.hologram,
+                                                  build: { try await ToonMaterialFactory.hologramMaterial() }) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Cyan projection edge instead of ink.
+                var s = settings
+                s.outlineColor = [0.15, 0.85, 1.0]
+                addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .filmNoir:
+                if let mat = await cachedMaterial(.filmNoir,
+                                                  build: { try await ToonMaterialFactory.filmNoirMaterial() }) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Deep black key-light silhouette, like a figure in a doorway.
+                var s = settings
+                s.outlineColor = [0, 0, 0]
+                s.outlineScale = max(settings.outlineScale, 1.05)
+                addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .sketch:
+                if let mat = await cachedMaterial(.sketch,
+                                                  build: { try await ToonMaterialFactory.sketchMaterial() }) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Wobbly graphite line — the pencil never draws the same twice.
+                var s = settings
+                s.outlineColor = [0.13, 0.13, 0.16]
+                s.outlineScale = max(settings.outlineScale, 1.06)
+                addOutline(to: entity, mesh: model.mesh, settings: s, wobble: true)
+
+            case .arcade:
+                if let mat = await arcadeMaterial(color: settings.baseColor) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Near-black bezel line around every sprite.
+                var s = settings
+                s.outlineColor = [0.02, 0.02, 0.04]
+                addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .matrixRain:
+                if let mat = await cachedMaterial(.matrixRain,
+                                                  build: { try await ToonMaterialFactory.matrixRainMaterial() }) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // Phosphor-green construct edge.
+                var s = settings
+                s.outlineColor = [0.05, 0.95, 0.25]
+                addOutline(to: entity, mesh: model.mesh, settings: s)
+
+            case .blueprint:
+                if let mat = await cachedMaterial(.blueprint,
+                                                  build: { try await ToonMaterialFactory.blueprintMaterial() }) {
+                    model.materials = Array(repeating: mat, count: max(model.materials.count, 1))
+                    entity.components.set(model)
+                }
+                // White drafting-pen outline, same ink as the contour lines.
+                var s = settings
+                s.outlineColor = [0.92, 0.97, 1.0]
+                addOutline(to: entity, mesh: model.mesh, settings: s)
             }
         }
 
@@ -361,6 +477,44 @@ public final class ToonShadingManager {
     private func popArtMaterial(color: SIMD3<Float>) async -> ShaderGraphMaterial? {
         guard var mat = await cachedMaterial(.popArt,
                                              build: { try await ToonMaterialFactory.popArtMaterial() })
+        else { return nil }
+        try? mat.setParameter(name: "BaseColor", value: .color(cgColor(color)))
+        return mat
+    }
+
+    /// 1970s dayglo blacklight-paint palette for `.blacklight`.
+    private static let blacklightPalette: [SIMD3<Float>] = [
+        [1.00, 0.35, 0.00], // fluoro orange
+        [0.35, 1.00, 0.10], // slime green
+        [1.00, 0.10, 0.55], // hot pink
+        [1.00, 0.90, 0.00], // dayglo yellow
+        [0.30, 0.50, 1.00], // UV blue
+    ]
+
+    /// Deterministic dayglo pick per entity.
+    static func blacklightColor(for entity: Entity) -> SIMD3<Float> {
+        blacklightPalette[Int(hash(entity) % UInt64(blacklightPalette.count))]
+    }
+
+    private func blacklightMaterial(glow: SIMD3<Float>) async -> ShaderGraphMaterial? {
+        guard var mat = await cachedMaterial(.blacklight,
+                                             build: { try await ToonMaterialFactory.blacklightMaterial() })
+        else { return nil }
+        try? mat.setParameter(name: "GlowColor", value: .color(cgColor(glow)))
+        return mat
+    }
+
+    private func vhsMaterial(color: SIMD3<Float>) async -> ShaderGraphMaterial? {
+        guard var mat = await cachedMaterial(.vhs,
+                                             build: { try await ToonMaterialFactory.vhsMaterial() })
+        else { return nil }
+        try? mat.setParameter(name: "BaseColor", value: .color(cgColor(color)))
+        return mat
+    }
+
+    private func arcadeMaterial(color: SIMD3<Float>) async -> ShaderGraphMaterial? {
+        guard var mat = await cachedMaterial(.arcade,
+                                             build: { try await ToonMaterialFactory.arcadeMaterial() })
         else { return nil }
         try? mat.setParameter(name: "BaseColor", value: .color(cgColor(color)))
         return mat

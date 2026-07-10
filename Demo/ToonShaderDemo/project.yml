@@ -1,0 +1,25 @@
+name: ToonShaderDemo
+options:
+  bundleIdPrefix: io.medvr.toondemo
+  deploymentTarget:
+    visionOS: "2.0"
+packages:
+  DicyaninToonShader:
+    # The package under test lives two directories up (Demo/ToonShaderDemo -> repo root).
+    path: ../..
+targets:
+  ToonShaderDemo:
+    type: application
+    platform: visionOS
+    sources:
+      - Sources
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: io.medvr.toondemo
+        CODE_SIGNING_ALLOWED: NO
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "7"
+    dependencies:
+      - package: DicyaninToonShader
+        product: DicyaninToonShader

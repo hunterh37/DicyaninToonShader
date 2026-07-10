@@ -9,3 +9,7 @@ DerivedData/
 *.swp
 *.swo
 .DS_Store
+
+# Demo app generated artifacts
+Demo/ToonShaderDemo/ToonShaderDemo.xcodeproj/
+Demo/**/.build/

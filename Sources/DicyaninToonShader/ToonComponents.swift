@@ -40,6 +40,47 @@ public enum ToonMode: Equatable, Sendable {
     /// 2000s Y2K liquid chrome: banded iridescent fresnel with a slowly
     /// drifting hue and hot specular pings. `baseColor` is ignored.
     case y2kChrome
+    /// 1930s rubber-hose cartoon (Steamboat Willie): 2-band grayscale, dancing
+    /// film grain, projector brightness flicker, and a faint sepia fade, with a
+    /// thick ink outline. `baseColor` is ignored — it's a black-and-white film.
+    case rubberHose
+    /// 1970s velvet blacklight poster: near-black felt body with fluorescent
+    /// contour bands that slowly pulse like UV paint under a blacklight. The
+    /// fluoro colour is picked per entity from a dayglo palette; `baseColor`
+    /// is ignored.
+    case blacklight
+    /// 1987 Predator thermal vision: hard-quantized heat ramp (deep blue →
+    /// purple → red → orange → white-hot) driven by lighting + fresnel, with
+    /// slowly drifting hot spots. `baseColor` is ignored.
+    case thermal
+    /// 1990s worn VHS tape: cel shading with RGB channel mis-registration
+    /// (colour fringing along the silhouette) and a rolling tracking-noise bar.
+    /// Uses `baseColor` for the body tint.
+    case vhs
+    /// 2010s sci-fi hologram: translucent-looking cyan projection built from
+    /// horizontal slices, global flicker, and glitch bands that skip sideways.
+    /// `baseColor` is ignored.
+    case hologram
+    /// 1940s film noir: brutal 2-band black-and-white with hard venetian-blind
+    /// slat shadows creeping across every surface and dancing silver grain.
+    /// `baseColor` is ignored — it's always shot in black and white.
+    case filmNoir
+    /// 1985 "Take On Me" pencil sketch: warm paper white with graphite
+    /// cross-hatching that fills in as surfaces turn from the light, boiling
+    /// at 8 fps like hand-redrawn animation. `baseColor` is ignored.
+    case sketch
+    /// 1980s arcade cabinet CRT: the body colour is rendered through vertical
+    /// RGB phosphor triad stripes with horizontal scanlines and a rolling
+    /// refresh band. Uses `baseColor`.
+    case arcade
+    /// 1999 Matrix digital rain: near-black body with columns of phosphor-green
+    /// code streaming downward, hot white leading glyphs, and a green fresnel
+    /// rim. `baseColor` is ignored.
+    case matrixRain
+    /// 1950s drafting-room blueprint: cyanotype blue paper with white contour
+    /// lines at every shading terminator, a faint graph-paper grid, and bright
+    /// silhouette linework. `baseColor` is ignored.
+    case blueprint
 }
 
 /// Flags an entity (and its descendants) for toon styling.
